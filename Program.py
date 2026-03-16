@@ -1112,13 +1112,27 @@ if IS_WINDOWS:
 
     discord.opus.load_opus(download_libopus())
 else:
-    # On Linux, libopus is installed via the system package manager (libopus0 / libopus-dev).
-    # discord.py finds it automatically; manual loading is not needed.
+    # On Linux, load libopus from the system
     if not discord.opus.is_loaded():
-        try:
-            discord.opus.load_opus("libopus.so.0")
-        except Exception:
-            pass  # discord.py will try on its own
+        import ctypes.util as _cu
+
+        _opus_candidates = [
+            _cu.find_library("opus"),  # auto-detect (e.g. "libopus.so.0")
+            "libopus.so.0",
+            "libopus.so",
+            "opus",
+        ]
+        for _lib in _opus_candidates:
+            if not _lib:
+                continue
+            try:
+                discord.opus.load_opus(_lib)
+                print(f"Loaded opus: {_lib}")
+                break
+            except Exception:
+                continue
+        if not discord.opus.is_loaded():
+            print("WARNING: Could not load libopus, voice will not work.")
 
 
 # SoundDevice PCM class for streaming audio from the microphone
