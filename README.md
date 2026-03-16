@@ -55,15 +55,36 @@ It can handle multiple Devices at once.
     pip install -r requirements.txt
     ```
 
-3. Replace placeholders in the script with your actual values
+3. Set up your `.env` file (see Configuration below)
 
 ## Configuration
 
-Replace the following Placeholder values in the script:
-- `TOKEN = 'YOUR_BOT_TOKEN'`: The token for your Discord bot. _Line 2_
-- `GUILD_ID = YOUR_GUILD_ID`: The ID of the guild where the bot will operate. _Line 4_
-- `AUTHORIZED_USERS = [YOUR_USER_ID]`: A list of user IDs that are authorized to control the bot. _Line 7_
-- `channel_ids['voice'] = YOUR_VOICE_CHANNEL_ID`: The ID of an Voice Channel on your Server. _Line 211_
+All credentials are stored in a `.env` file
+
+1. Copy the example file:
+    ```sh
+    cp .env.example .env
+    ```
+
+2. Open `.env` and fill in your values:
+
+    ```env
+    BOT_TOKEN=
+    GUILD_ID=
+    AUTHORIZED_USERS=
+    VOICE_CHANNEL_ID=
+    ```
+
+### Where to find each value
+
+| Config | Where to get it |
+|---|---|
+| `BOT_TOKEN` | [Discord Developer Portal](https://discord.com/developers/applications) → Your App → **Bot** → **Token** |
+| `GUILD_ID` | Right-click the Discord Server the Bot should operate on → **Copy Server ID** |
+| `AUTHORIZED_USERS` | Right-click your profile → **Copy User ID** (comma-separate multiple IDs) |
+| `VOICE_CHANNEL_ID` | Right-click the voice channel your Bot should use → **Copy Channel ID** |
+
+> **Note:** Copying IDs requires **Developer Mode** to be enabled in Discord settings: *User Settings → Advanced → Developer Mode*.
 
 ## Running the Bot
 
