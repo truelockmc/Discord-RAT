@@ -16,3 +16,4 @@ pycaw
 pycryptodome
 comtypes
 pynacl
+python-dotenv

