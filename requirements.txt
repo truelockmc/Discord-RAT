@@ -1,4 +1,4 @@
-discord.py
+discord.py[voice]
 plyer
 aiohttp
 aiofiles
@@ -11,9 +11,7 @@ pynput
 Pillow
 requests
 numpy
-opencv-python
 pycaw
 pycryptodome
 comtypes
-pynacl
 python-dotenv
