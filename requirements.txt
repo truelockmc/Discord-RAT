@@ -6,7 +6,7 @@ pyautogui
 chardet
 psutil
 pyttsx3
-pyaudio
+sounddevice
 pynput
 Pillow
 requests
