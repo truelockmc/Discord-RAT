@@ -26,7 +26,6 @@ from config import (
 
 # ── Runtime state ──────────────────────────────────────────────────────────
 is_admin = False
-channel_ids: dict = {}  # populated in on_ready
 
 
 # ── Auth / channel checks ──────────────────────────────────────────────────

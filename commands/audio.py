@@ -12,9 +12,8 @@ import sounddevice as sd
 from discord.ext import commands
 from discord.ext.commands import MissingRequiredArgument
 
-from config import IS_WINDOWS, TEMP_DIR, bot
+from config import IS_WINDOWS, TEMP_DIR, bot, channel_ids
 from utils import (
-    channel_ids,
     current_time,
     generic_command_error,
     in_correct_channel,

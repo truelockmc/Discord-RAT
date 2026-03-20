@@ -11,9 +11,8 @@ from discord.ext import commands
 from PIL import ImageGrab
 from pynput.keyboard import Key, Listener
 
-from config import TEMP_DIR
+from config import TEMP_DIR, channel_ids
 from utils import (
-    channel_ids,
     current_time,
     generic_command_error,
     in_correct_channel,

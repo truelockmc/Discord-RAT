@@ -1,8 +1,3 @@
-## _Notice:_
-_The Code is pretty unreadable bcs everything is one file. I wont add a Builder or something because then tooo skiddy people are gonna use it_
-
-_Please help me by contributing more Features and reporting issues and improvements._
-
 # Discord-RAT
 A remote administration Tool over discord. Easy to use, undetected and powerfull.
 
