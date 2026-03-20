@@ -90,7 +90,7 @@ All credentials are stored in a `.env` file
 
 To run the bot, execute the script:
 ```sh
-python Program.py
+python main.py
 ```
 
 ## Commands
