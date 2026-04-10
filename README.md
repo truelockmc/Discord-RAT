@@ -6,7 +6,7 @@ It can handle multiple Devices at once.
 
 ## Oh, yeah and only for Educational Purposes of course < 3 hehe
 
-[![Stargazers repo roster for @truelockmc/PC-Optimus](https://reporoster.com/stars/dark/truelockmc/Discord-RAT)](https://github.com/truelockmc/Discord-RAT/stargazers)
+[![Stargazers repo roster for @truelockmc/Discord-RAT](https://reporoster.com/stars/dark/truelockmc/Discord-RAT)](https://github.com/truelockmc/Discord-RAT/stargazers)
 
 ## Features
 
