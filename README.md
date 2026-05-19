@@ -1,5 +1,13 @@
+> [!IMPORTANT]
+> - This repository has been archived.
+> - I no longer feel comfortable hosting something like this, especially providing support for its usage.
+> - The Repo will remain on Github, because it is still an interesting program and was my first major Project.
+> - The code will no longer be updated, and I will not provide support for fixing issues.
+> - I do not recommend using RAT tools from the internet if you have little to no knowledge of coding or computers in general. You are going to endanger yourself and others.
+> - Don't be a Discord "E-Gangster", I know it is quite cool to get a feeling of power with something like this, but trust me, you'll regret it.
+
 # Discord-RAT
-A remote administration Tool over discord. Easy to use, undetected and powerfull.
+A remote administration Tool over discord. Easy to use, undetected and powerful.
 
 This Python Programm basically hosts a discord bot on the Computer its executed on, which allows the user who configured it to remotely control the computer via Discord commands. It supports a variety of features such as executing commands, taking screenshots, managing files, and more.
 It can handle multiple Devices at once.
@@ -153,4 +161,4 @@ Feel free to submit issues or pull requests if you have suggestions or improveme
 This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0)
 
 ## Contact / Help
-You can always create an Issue here on Github, contact me on [![Discord](https://img.shields.io/badge/Discord-%237289DA.svg?logo=discord&logoColor=white)](https://discord.gg/wDESTYeZy9), or using my email: anonyson@proton.me.
+This Project has been archived, I will no longer offer you support for using it.
